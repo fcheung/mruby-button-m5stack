@@ -1,4 +1,8 @@
+#ifdef M5STICKC
+#include <M5StickC.h>
+#else
 #include <M5Stack.h>
+#endif
 
 #include "mruby.h"
 #include "mruby/class.h"
@@ -8,11 +12,19 @@
 extern "C" {
 #endif
 
+#ifdef M5STICKC
+#define __MAX_BUTTON_ID__ 2
+#else
+#define __MAX_BUTTON_ID__ 3
+#endif
+
 /* Button objects */
 static Button * _btn[] = {
   &M5.BtnA, // A: left 
   &M5.BtnB, // B: center
+  #ifndef M5STICKC // m5stick only has 2 buttons
   &M5.BtnC  // C: right
+  #endif 
 };
 
 static mrb_value
@@ -20,7 +32,7 @@ mrb_btn_init(mrb_state *mrb, mrb_value self)
 {
   mrb_int btn_id;
   mrb_get_args(mrb, "i", &btn_id);
-  if (btn_id < 0 || btn_id >= 3) {
+  if (btn_id < 0 || btn_id >= __MAX_BUTTON_ID__) {
     mrb_raisef(mrb, E_ARGUMENT_ERROR, "illegal button ID %S", mrb_fixnum_value(btn_id));
   }
   mrb_iv_set(mrb, self, mrb_intern_lit(mrb, "@id"), mrb_fixnum_value(btn_id));
@@ -51,6 +63,11 @@ mrb_btn_is_released(mrb_state *mrb, mrb_value self)
   return mrb_bool_value(b != 0);
 }
 
+static mrb_value
+mrb_button_count(mrb_state *mrb, mrb_value self){
+  return mrb_fixnum_value(__MAX_BUTTON_ID__);
+}
+
 void
 mrb_mruby_button_m5stack_gem_init(mrb_state *mrb)
 {
@@ -61,6 +78,8 @@ mrb_mruby_button_m5stack_gem_init(mrb_state *mrb)
   mrb_define_method(mrb, btn, "initialize", mrb_btn_init, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, btn, "pressed?",   mrb_btn_is_pressed, MRB_ARGS_NONE());
   mrb_define_method(mrb, btn, "released?",  mrb_btn_is_released, MRB_ARGS_NONE());
+
+  mrb_define_class_method(mrb, btn, "count", mrb_button_count, MRB_ARGS_NONE());
 }
 
 void
